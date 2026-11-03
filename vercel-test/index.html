@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vercel Cookie Test</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center;
+      padding: 24px; font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+      color: #202536; background: linear-gradient(135deg, #eef2ff, #f8fafc);
+    }
+    .card {
+      width: min(100%, 520px); padding: 32px; background: #fff;
+      border: 1px solid #e5e7eb; border-radius: 18px;
+      box-shadow: 0 18px 50px rgba(31, 41, 55, .09);
+    }
+    .eyebrow { color: #635bdb; font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 8px 0; font-size: 28px; }
+    .desc { margin: 0 0 26px; color: #667085; line-height: 1.6; }
+    label { display: block; margin: 16px 0 7px; font-size: 14px; font-weight: 650; }
+    input, textarea {
+      width: 100%; padding: 12px 14px; border: 1px solid #d0d5dd;
+      border-radius: 10px; font: inherit; outline: none; background: #fff;
+    }
+    input:focus, textarea:focus { border-color: #7167e8; box-shadow: 0 0 0 3px #7167e822; }
+    textarea { min-height: 92px; resize: vertical; }
+    .actions { display: flex; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
+    button {
+      border: 0; border-radius: 10px; padding: 11px 16px; font: inherit;
+      font-weight: 700; cursor: pointer;
+    }
+    .primary { color: white; background: #6258d9; }
+    .secondary { color: #344054; background: #eef0f5; }
+    button:hover { filter: brightness(.97); }
+    .status { margin-top: 18px; padding: 12px 14px; border-radius: 10px; font-size: 14px; background: #f2f4f7; color: #475467; }
+    .status.success { background: #ecfdf3; color: #027a48; }
+    .saved { margin-top: 22px; padding-top: 18px; border-top: 1px solid #eaecf0; }
+    .saved h2 { margin: 0 0 10px; font-size: 15px; }
+    .saved p { margin: 6px 0; color: #667085; font-size: 14px; overflow-wrap: anywhere; }
+    .saved strong { color: #344054; }
+    .hint { margin-top: 20px; color: #98a2b3; font-size: 12px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="eyebrow">Deployment test</div>
+    <h1>Cookie Storage Demo</h1>
+    <p class="desc">Isi form di bawah, lalu simpan. Data akan disimpan di browser menggunakan cookie dan tetap tersedia setelah halaman di-refresh.</p>
+
+    <form id="profileForm">
+      <label for="name">Nama</label>
+      <input id="name" name="name" type="text" placeholder="Masukkan nama" autocomplete="name">
+
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" placeholder="nama@email.com" autocomplete="email">
+
+      <label for="note">Catatan</label>
+      <textarea id="note" name="note" placeholder="Tulis catatan singkat..."></textarea>
+
+      <div class="actions">
+        <button class="primary" type="submit">Simpan ke Cookie</button>
+        <button class="secondary" type="button" id="clearBtn">Hapus Cookie</button>
+      </div>
+    </form>
+
+    <div id="status" class="status" role="status">Belum ada perubahan.</div>
+
+    <section class="saved">
+      <h2>Data tersimpan</h2>
+      <p><strong>Nama:</strong> <span id="savedName">-</span></p>
+      <p><strong>Email:</strong> <span id="savedEmail">-</span></p>
+      <p><strong>Catatan:</strong> <span id="savedNote">-</span></p>
+    </section>
+
+    <p class="hint">Demo ini menggunakan cookie browser dengan masa berlaku 7 hari. Data hanya tersimpan di browser/perangkat ini, bukan di server.</p>
+  </main>
+
+  <script>
+    const COOKIE_NAME = "vercel_cookie_test";
+
+    function setCookie(name, value, days) {
+      const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
+      document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+    }
+
+    function getCookie(name) {
+      const prefix = name + "=";
+      const item = document.cookie.split("; ").find(row => row.startsWith(prefix));
+      return item ? decodeURIComponent(item.substring(prefix.length)) : null;
+    }
+
+    function deleteCookie(name) {
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax`;
+    }
+
+    function showStatus(message, success = false) {
+      const status = document.getElementById("status");
+      status.textContent = message;
+      status.className = success ? "status success" : "status";
+    }
+
+    function renderSavedData(data) {
+      document.getElementById("savedName").textContent = data?.name || "-";
+      document.getElementById("savedEmail").textContent = data?.email || "-";
+      document.getElementById("savedNote").textContent = data?.note || "-";
+    }
+
+    function loadData() {
+      const raw = getCookie(COOKIE_NAME);
+      if (!raw) {
+        renderSavedData(null);
+        return;
+      }
+
+      try {
+        const data = JSON.parse(raw);
+        document.getElementById("name").value = data.name || "";
+        document.getElementById("email").value = data.email || "";
+        document.getElementById("note").value = data.note || "";
+        renderSavedData(data);
+        showStatus("Data berhasil dimuat dari cookie.", true);
+      } catch (error) {
+        deleteCookie(COOKIE_NAME);
+        renderSavedData(null);
+        showStatus("Cookie tidak valid dan sudah dihapus.");
+      }
+    }
+
+    document.getElementById("profileForm").addEventListener("submit", function(event) {
+      event.preventDefault();
+
+      const data = {
+        name: document.getElementById("name").value.trim(),
+        email: document.getElementById("email").value.trim(),
+        note: document.getElementById("note").value.trim()
+      };
+
+      setCookie(COOKIE_NAME, JSON.stringify(data), 7);
+      renderSavedData(data);
+      showStatus("Berhasil disimpan ke cookie selama 7 hari.", true);
+    });
+
+    document.getElementById("clearBtn").addEventListener("click", function() {
+      deleteCookie(COOKIE_NAME);
+      document.getElementById("profileForm").reset();
+      renderSavedData(null);
+      showStatus("Cookie berhasil dihapus.", true);
+    });
+
+    loadData();
+  </script>
+</body>
+</html>
